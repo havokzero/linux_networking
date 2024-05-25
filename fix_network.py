@@ -127,8 +127,7 @@ def diagnose_and_fix_network(distro):
         if proceed == 'y':
             if os.geteuid() != 0:
                 colour("red", "[-] Script is being run as a low-privileged user", 1)
-                colour("yellow", "Please enter your sudo password: ")
-                password = getpass.getpass()
+                colour("yellow", "Please enter your sudo password when prompted.")
                 os.execvp("sudo", ["sudo", "python3"] + sys.argv)
             else:
                 for name, status in problematic_interfaces.items():
@@ -214,7 +213,7 @@ def check_tryhackme_vpn():
     colour("process", "[+] Checking TryHackMe VPN connection...")
     
     # Check if tun0 exists
-    if not "tun0" in run_command("ip addr"):
+    if "tun0" not in run_command("ip addr"):
         colour("red", "[-] tun0 interface does not exist")
         return
     
@@ -225,8 +224,8 @@ def check_tryhackme_vpn():
         return
     
     # Check if multiple OpenVPN connections are running
-    connections = run_command("ps aux | grep -v 'sudo\|grep' | grep -Eo 'openvpn .*\\.ovpn' | wc -l")
-    if int(connections) > 1:
+    connections = int(run_command("ps aux | grep -v 'sudo\|grep' | grep -Eo 'openvpn .*\\.ovpn' | wc -l"))
+    if connections > 1:
         colour("red", "[-] More than one OpenVPN connection running")
         run_command("sudo killall -9 openvpn")
         colour("green", "[+] Killed duplicate processes")
