@@ -201,24 +201,62 @@ def list_relevant_network_info():
     pci_devices = run_command("sudo lspci | grep -Ei 'eth|network|ethernet|wireless|wifi'")
     colour("code", pci_devices)
 
-def check_tryhackme_connection(ovpn):
-    ovpnoutput = run_command(f"openvpn {ovpn}")
-    if "Initialization Sequence Completed" in ovpnoutput:
-        colour("green", "[+] Connection Process completed successfully!")
-    elif "Cannot load inline certificate file" in ovpnoutput or "certificate verify failed" in ovpnoutput:
-        colour("red", "[-] Fatal Error: Inline Certificate is invalid")
-        print("Please regenerate your VPN config on the access page (https://tryhackme.com/access)")
-    elif "cipher AES-256-CBC" in ovpnoutput:
-        colour("red", "[-] Using outdated switch for cipher negotiations. Attempting to update...")
-        with open(ovpn, 'r') as file:
-            filedata = file.read()
-        filedata = filedata.replace('cipher AES-256-CBC', 'data-ciphers AES-256-CBC')
-        with open(ovpn, 'w') as file:
-            file.write(filedata)
-        colour("green", "[+] Successfully updated cipher switch! Please connect to the VPN using the following command:")
-        colour("code", f"sudo openvpn {ovpn}")
+def check_tryhackme_vpn():
+    def test_success(output):
+        return "Initialization Sequence Completed" in output
+
+    def test_cert(output):
+        return any(err in output for err in ["Cannot load inline certificate file", "certificate verify failed", "cannot load CA"])
+
+    def test_cipher(output):
+        return "cipher AES-256-CBC" in output
+
+    colour("process", "[+] Checking TryHackMe VPN connection...")
+    
+    # Check if tun0 exists
+    if not "tun0" in run_command("ip addr"):
+        colour("red", "[-] tun0 interface does not exist")
+        return
+    
+    # Check if tun0 IP is in the correct range
+    tun0_ip = run_command("ip addr show tun0 | grep 'inet ' | awk '{print $2}'")
+    if not any(prefix in tun0_ip for prefix in ["10.2.", "10.4.", "10.6.", "10.8.", "10.9.", "10.11.", "10.13.", "10.14.", "10.17.", "10.50."]):
+        colour("red", f"[-] tun0 IP is in the wrong range: {tun0_ip}")
+        return
+    
+    # Check if multiple OpenVPN connections are running
+    connections = run_command("ps aux | grep -v 'sudo\|grep' | grep -Eo 'openvpn .*\\.ovpn' | wc -l")
+    if int(connections) > 1:
+        colour("red", "[-] More than one OpenVPN connection running")
+        run_command("sudo killall -9 openvpn")
+        colour("green", "[+] Killed duplicate processes")
+    
+    # Check MTU value
+    origin_mtu = int(run_command("cat /sys/class/net/tun0/mtu"))
+    mtu = origin_mtu - 30
+    
+    colour("process", "[+] Confirming connectivity")
+    while True:
+        ping_result = run_command(f"ping -M do -s {mtu} -W 1 -c 1 10.10.10.10")
+        if "1 received" in ping_result:
+            colour("green", "[+] MTU value OK")
+            break
+        elif mtu < 1000:
+            colour("red", "[-] MTU value failed at 1000, aborting MTU check")
+            break
+        else:
+            mtu -= 30
+    
+    # Final connectivity check
+    final_ping = run_command("ping -c 1 -q 10.10.10.10")
+    if "1 received" in final_ping:
+        colour("green", "[+] Connectivity checks completed!")
+        colour("green", "[+] You are connected to the TryHackMe Network")
+        thm_ip = run_command("curl -s http://10.10.10.10/whoami")
+        colour("green", f"Your TryHackMe IP address is: {thm_ip}")
+        colour("green", "Happy Hacking!")
     else:
-        colour("red", "[-] Failed to connect to TryHackMe VPN.")
+        colour("red", "[-] Something went wrong -- please ask for further assistance in the TryHackMe Discord server, subreddit, or forum")
 
 def main_menu():
     try:
@@ -238,8 +276,7 @@ def main_menu():
             elif choice == '3':
                 fetch_external_ip()
             elif choice == '4':
-                ovpn = input("Enter the path to your TryHackMe VPN config file: ").strip()
-                check_tryhackme_connection(ovpn)
+                check_tryhackme_vpn()
             elif choice == '5':
                 colour("green", "Exiting...")
                 break
