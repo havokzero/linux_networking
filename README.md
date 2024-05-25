@@ -4,13 +4,13 @@ A comprehensive and user-friendly script for diagnosing and managing network iss
 
 ## Features
 
-- Detects and displays the Linux distribution and environment (physical or virtual machine).
-- Lists all network interfaces and provides detailed information.
-- Diagnoses common network issues such as interfaces being down or lacking an IPv4 address.
-- Prompts the user to fix detected issues and attempts to resolve them.
-- Checks internet connectivity and fetches the external IP address.
-- Includes a main menu for easy navigation and selection of actions.
-- Integrates with TryHackMe VPN to check the VPN connection status.
+- **Detection and Display**: Automatically detects and displays the Linux distribution and whether the environment is a physical or virtual machine.
+- **Network Interfaces**: Lists all network interfaces with detailed information about each.
+- **Diagnosis**: Diagnoses common network issues such as interfaces being down or lacking an IPv4 address.
+- **Issue Resolution**: Prompts the user to fix detected issues and attempts to resolve them.
+- **Connectivity Check**: Checks internet connectivity and fetches the external IP address.
+- **Main Menu**: Provides a main menu for easy navigation and selection of actions.
+- **TryHackMe VPN Integration**: Checks the TryHackMe VPN connection status without requiring the VPN configuration file path.
 
 ## Requirements
 
